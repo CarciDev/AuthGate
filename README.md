@@ -23,3 +23,11 @@ uv sync
 uv run pytest tests/test_acceptance.py -v
 ```
 Every number in this README must come from files under `results/`.
+
+## Benchmarks (milestone 5)
+`bench/load.sh` (vegeta sweep -> `results/latency.md`) and `bench/chaos.sh` (1M authorizations under
+broker outages and relay SIGKILLs -> `results/chaos.json`). Both need `DATABASE_URL`, `REDIS_URL`,
+`KAFKA_BOOTSTRAP`. `bench/dev-postgres.sh` starts a local Postgres where Docker is unavailable.
+Caveat: without Docker the broker cannot be restarted, so `chaos.sh` injects outages through
+`cmd/chaosproxy` (severs all broker connections and refuses new ones for 6 s); the report records
+`broker_restart_mode: proxy_outage`. With Docker, set `BROKER_RESTART_CMD="docker compose restart redpanda"`.

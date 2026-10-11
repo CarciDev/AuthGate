@@ -1,0 +1,22 @@
+{
+  "authorizations": 1000000,
+  "broker_outage_secs": 6,
+  "broker_restart_mode": "proxy_outage",
+  "broker_restarts": 9,
+  "chaos_interval_secs": 15,
+  "client_failed": 0,
+  "client_ok": 1000000,
+  "client_rps": 3859.1,
+  "client_seconds": 259.1,
+  "client_sent": 1000000,
+  "duplicates_in_ledger": 0,
+  "extra_deliveries_absorbed": 145,
+  "ledger_rows": 1000000,
+  "lost_events": 0,
+  "negative_balances": 0,
+  "outbox_rows": 1000000,
+  "outbox_unsent": 0,
+  "redelivered_events": 145,
+  "relay_kills": 8,
+  "run_id": "chaos1791752255"
+}

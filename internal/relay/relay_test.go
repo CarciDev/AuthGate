@@ -128,6 +128,26 @@ func TestLedgerDedupesByEventID(t *testing.T) {
 	}
 }
 
+func TestLedgerBatchDedupes(t *testing.T) {
+	s, ctx := testStore(t), context.Background()
+	l := &consumer.Ledger{Pool: s.Pool}
+	a, b := uuid.NewString(), uuid.NewString()
+	pa := []byte(`{"authorization_id":"` + uuid.NewString() + `"}`)
+	pb := []byte(`{"authorization_id":"` + uuid.NewString() + `"}`)
+	// a appears twice in one batch and again in a second batch.
+	if err := l.RecordBatch(ctx, []string{a, b, a}, [][]byte{pa, pb, pa}); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.RecordBatch(ctx, []string{a}, [][]byte{pa}); err != nil {
+		t.Fatal(err)
+	}
+	var rows, da int
+	s.Pool.QueryRow(ctx, `SELECT count(*), max(deliveries) FROM ledger WHERE event_id IN ($1,$2)`, a, b).Scan(&rows, &da)
+	if rows != 2 || da != 3 {
+		t.Fatalf("rows=%d max deliveries=%d", rows, da)
+	}
+}
+
 // TestRedpandaEndToEnd publishes through real Redpanda, replays the same rows (simulating a relay
 // that died after publishing but before marking sent) and checks the ledger holds each event once.
 func TestRedpandaEndToEnd(t *testing.T) {

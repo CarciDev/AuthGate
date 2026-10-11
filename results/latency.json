@@ -1,0 +1,47 @@
+[
+  {
+    "target_rps": 200,
+    "achieved_rps": 200.0,
+    "p50_ms": 2.4,
+    "p99_ms": 6.53,
+    "max_ms": 56.0,
+    "success_pct": 100,
+    "requests": 6000
+  },
+  {
+    "target_rps": 500,
+    "achieved_rps": 500.0,
+    "p50_ms": 2.2,
+    "p99_ms": 64.34,
+    "max_ms": 256.8,
+    "success_pct": 100,
+    "requests": 15000
+  },
+  {
+    "target_rps": 1000,
+    "achieved_rps": 999.9,
+    "p50_ms": 2.01,
+    "p99_ms": 38.81,
+    "max_ms": 79.2,
+    "success_pct": 100,
+    "requests": 29999
+  },
+  {
+    "target_rps": 2000,
+    "achieved_rps": 1999.9,
+    "p50_ms": 2.39,
+    "p99_ms": 87.87,
+    "max_ms": 142.0,
+    "success_pct": 100,
+    "requests": 60000
+  },
+  {
+    "target_rps": 3000,
+    "achieved_rps": 2992.6,
+    "p50_ms": 2.84,
+    "p99_ms": 153.86,
+    "max_ms": 204.4,
+    "success_pct": 100,
+    "requests": 89998
+  }
+]

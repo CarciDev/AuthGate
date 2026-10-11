@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"authgate/internal/api"
 	"authgate/internal/consumer"
+	"authgate/internal/kafkaopt"
 	"authgate/internal/relay"
 	"authgate/internal/rules"
 	"authgate/internal/scorer"
@@ -45,6 +47,13 @@ func main() {
 			return scr.Screen(ctx, r.CardID, r.AmountCents, r.Features)
 		}
 	}
+	if n, _ := strconv.Atoi(os.Getenv("SEED_ACCOUNTS")); n > 0 { // bulk accounts for the load/chaos harness
+		for i := 0; i < n; i++ {
+			if err := s.SeedAccount(ctx, "acc-"+strconv.Itoa(i), 1_000_000_000); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 	if os.Getenv("SEED_DEMO") == "1" { // demo accounts for `docker compose up` and the acceptance test
 		for _, id := range []string{"acc-1", "acc-2"} {
 			if err := s.SeedAccount(ctx, id, 100_000_000); err != nil {
@@ -57,7 +66,7 @@ func main() {
 	if bootstrap := os.Getenv("KAFKA_BOOTSTRAP"); bootstrap != "" {
 		brokers := strings.Split(bootstrap, ",")
 		if os.Getenv("RUN_RELAY") == "1" {
-			pub, err := relay.NewKafkaPublisher(brokers)
+			pub, err := relay.NewKafkaPublisher(brokers, kafkaopt.FromEnv()...)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -65,7 +74,7 @@ func main() {
 		}
 		if os.Getenv("RUN_CONSUMER") == "1" {
 			go func() {
-				log.Println("consumer stopped:", consumer.Run(ctx, &consumer.Ledger{Pool: s.Pool}, brokers, "authgate-ledger", store.OutboxTopic))
+				log.Println("consumer stopped:", consumer.Run(ctx, &consumer.Ledger{Pool: s.Pool}, brokers, "authgate-ledger", store.OutboxTopic, kafkaopt.FromEnv()...))
 			}()
 		}
 	}
