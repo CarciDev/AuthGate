@@ -8,7 +8,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 R = ROOT / "results"
 
-
 def main() -> None:
     lat = json.loads((R / "latency.json").read_text())
     chaos = json.loads((R / "chaos.json").read_text())
@@ -117,7 +116,6 @@ broker outages and relay SIGKILLs -> `results/chaos.json`). Both need `DATABASE_
 `KAFKA_BOOTSTRAP`. `bench/dev-postgres.sh` starts a local Postgres where Docker is unavailable.
 """
     (ROOT / "README.md").write_text(text)
-
 
 if __name__ == "__main__":
     main()

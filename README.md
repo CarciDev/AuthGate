@@ -1,5 +1,6 @@
 # AuthGate: card transaction authorization in Go with a transactional outbox
 
+
 > **Headline result:** 1,000,000 authorizations under 9 broker outages and 8 relay kills: **0 lost events, 0 duplicates in the ledger**; p50 2.01 ms / p99 38.81 ms at 1000 RPS (p50 2.84 ms at 3000 RPS).
 
 ## Architecture
