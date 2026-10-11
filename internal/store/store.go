@@ -39,6 +39,8 @@ type Request struct {
 	CardID      string `json:"card_id"`
 	AmountCents int64  `json:"amount_cents"`
 	Merchant    string `json:"merchant"`
+	// Features are optional named model inputs (see results/golden_scores.json feature_names).
+	Features map[string]float64 `json:"features,omitempty"`
 }
 
 // Decision is the stored outcome of an authorization.
@@ -50,7 +52,12 @@ type Decision struct {
 }
 
 // Store wraps a pgx pool.
-type Store struct{ Pool *pgxpool.Pool }
+type Store struct {
+	Pool *pgxpool.Pool
+	// Screen, if set, runs pre-authorization rules and returns a decline reason code ("" = pass).
+	// It runs after the idempotency lookup, so replays never re-count velocity.
+	Screen func(ctx context.Context, r Request) string
+}
 
 // New connects to Postgres and applies the schema.
 func New(ctx context.Context, dsn string) (*Store, error) {
@@ -97,6 +104,11 @@ func (s *Store) authorizeOnce(ctx context.Context, key string, r Request) (Decis
 		return d, err
 	}
 
+	screened := ""
+	if s.Screen != nil {
+		screened = s.Screen(ctx, r)
+	}
+
 	var available int64
 	err = tx.QueryRow(ctx, `SELECT available_cents FROM accounts WHERE id = $1 FOR UPDATE`, r.AccountID).Scan(&available)
 	// Same-key requests for one account queue on the lock above; re-check now that we hold it.
@@ -110,6 +122,8 @@ func (s *Store) authorizeOnce(ctx context.Context, key string, r Request) (Decis
 		d.Decision, d.ReasonCode = "decline", ReasonAccountNotFound
 	case err != nil:
 		return Decision{}, err
+	case screened != "":
+		d.Decision, d.ReasonCode = "decline", screened
 	case available < r.AmountCents:
 		d.Decision, d.ReasonCode = "decline", ReasonInsufficientFunds
 	default:
