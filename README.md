@@ -18,18 +18,9 @@
 - Trained the fraud model on a time-ordered split and reported recall at fixed false-decline rates of 0.5%, 1% and 2% ([model_metrics.md](results/model_metrics.md)).
 
 ## Architecture
-```mermaid
-flowchart LR
-    C["Client<br/>POST /authorize<br/>Idempotency-Key"] --> A["AuthGate<br/>Go net/http"]
-    A --> R[("Redis<br/>velocity rules")]
-    A --> M["LightGBM<br/>in-process, leaves"]
-    A --> P[("Postgres<br/>one transaction")]
-    P --> O["authorizations<br/>+ outbox row"]
-    O --> L["Relay pool<br/>FOR UPDATE SKIP LOCKED"]
-    L --> K["Redpanda<br/>Kafka API"]
-    K --> D["Consumer<br/>dedup by event_id"]
-    D --> G[("Ledger table")]
-```
+![Architecture](docs/diagrams/architecture.png)
+
+<sub>Diagram source: [docs/diagrams/architecture.mmd](docs/diagrams/architecture.mmd) (Mermaid)</sub>
 
 A request checks the Redis counters (1 min and 1 h windows, plus an amount cap) and scores the transaction in-process. It then locks the account row, places the balance hold, and inserts the decision and the outbox row in a single Postgres transaction. The relay claims unsent rows with `SKIP LOCKED`, publishes with an idempotent producer, and marks a row sent only after the broker acknowledges. The consumer inserts into the ledger with `ON CONFLICT (event_id) DO NOTHING`.
 

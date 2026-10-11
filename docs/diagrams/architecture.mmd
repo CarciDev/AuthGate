@@ -1,0 +1,10 @@
+flowchart LR
+    C["Client<br/>POST /authorize<br/>Idempotency-Key"] --> A["AuthGate<br/>Go net/http"]
+    A --> R[("Redis<br/>velocity rules")]
+    A --> M["LightGBM<br/>in-process, leaves"]
+    A --> P[("Postgres<br/>one transaction")]
+    P --> O["authorizations<br/>+ outbox row"]
+    O --> L["Relay pool<br/>FOR UPDATE SKIP LOCKED"]
+    L --> K["Redpanda<br/>Kafka API"]
+    K --> D["Consumer<br/>dedup by event_id"]
+    D --> G[("Ledger table")]
