@@ -15,6 +15,9 @@ func DSN(t testing.TB, name string) string {
 	t.Helper()
 	base := os.Getenv("TEST_DATABASE_URL")
 	if base == "" {
+		base = os.Getenv("DATABASE_URL")
+	}
+	if base == "" {
 		base = "postgres://postgres:postgres@localhost:5432/authgate_test"
 	}
 	ctx := context.Background()
