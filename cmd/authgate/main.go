@@ -6,8 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"authgate/internal/api"
+	"authgate/internal/consumer"
+	"authgate/internal/relay"
 	"authgate/internal/rules"
 	"authgate/internal/scorer"
 	"authgate/internal/store"
@@ -47,6 +50,23 @@ func main() {
 			if err := s.SeedAccount(ctx, id, 100_000_000); err != nil {
 				log.Fatal(err)
 			}
+		}
+	}
+	// RUN_RELAY / RUN_CONSUMER let the relay and ledger consumer run in-process or as separate
+	// replicas (the chaos harness kills and restarts the relay).
+	if bootstrap := os.Getenv("KAFKA_BOOTSTRAP"); bootstrap != "" {
+		brokers := strings.Split(bootstrap, ",")
+		if os.Getenv("RUN_RELAY") == "1" {
+			pub, err := relay.NewKafkaPublisher(brokers)
+			if err != nil {
+				log.Fatal(err)
+			}
+			go (&relay.Relay{Pool: s.Pool, Pub: pub}).Run(ctx)
+		}
+		if os.Getenv("RUN_CONSUMER") == "1" {
+			go func() {
+				log.Println("consumer stopped:", consumer.Run(ctx, &consumer.Ledger{Pool: s.Pool}, brokers, "authgate-ledger", store.OutboxTopic))
+			}()
 		}
 	}
 	addr := os.Getenv("LISTEN_ADDR")

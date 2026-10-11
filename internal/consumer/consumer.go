@@ -1,0 +1,68 @@
+// Package consumer reads authorization events from Kafka and records each event_id exactly once
+// in the ledger table, turning the relay's at-least-once delivery into effectively-once.
+package consumer
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/twmb/franz-go/pkg/kgo"
+)
+
+// Ledger writes deduplicated events to Postgres.
+type Ledger struct{ Pool *pgxpool.Pool }
+
+// Record stores the event; a repeat delivery only bumps the deliveries counter.
+// It reports whether the event was new.
+func (l *Ledger) Record(ctx context.Context, eventID string, payload []byte) (bool, error) {
+	var agg struct {
+		ID string `json:"authorization_id"`
+	}
+	if err := json.Unmarshal(payload, &agg); err != nil {
+		return false, err
+	}
+	var inserted bool
+	err := l.Pool.QueryRow(ctx, `INSERT INTO ledger (event_id, aggregate_id, payload)
+		VALUES ($1,$2,$3) ON CONFLICT (event_id) DO UPDATE SET deliveries = ledger.deliveries + 1
+		RETURNING (xmax = 0)`, eventID, agg.ID, payload).Scan(&inserted)
+	return inserted, err
+}
+
+// Run consumes topic as a group member until ctx is cancelled. Offsets are committed only after
+// the ledger write, so a crash re-delivers (and the ledger dedupes) instead of losing events.
+func Run(ctx context.Context, l *Ledger, brokers []string, group, topic string, opts ...kgo.Opt) error {
+	opts = append([]kgo.Opt{
+		kgo.SeedBrokers(brokers...),
+		kgo.ConsumerGroup(group),
+		kgo.ConsumeTopics(topic),
+		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
+		kgo.DisableAutoCommit(),
+		kgo.AllowAutoTopicCreation(),
+	}, opts...)
+	cl, err := kgo.NewClient(opts...)
+	if err != nil {
+		return err
+	}
+	defer cl.Close()
+	for ctx.Err() == nil {
+		fetches := cl.PollFetches(ctx)
+		if fetches.IsClientClosed() {
+			return nil
+		}
+		fetches.EachRecord(func(r *kgo.Record) {
+			// Retry in place: skipping a failed record and committing later offsets would lose it.
+			for ctx.Err() == nil {
+				if _, err := l.Record(ctx, string(r.Key), r.Value); err == nil {
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+		})
+		if ctx.Err() == nil && fetches.NumRecords() > 0 {
+			_ = cl.CommitUncommittedOffsets(ctx) // on failure the next commit covers it
+		}
+	}
+	return ctx.Err()
+}

@@ -23,6 +23,8 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/authgate
       REDIS_URL: redis://redis:6379/0
       KAFKA_BOOTSTRAP: redpanda:9092
+      RUN_RELAY: "1"
+      RUN_CONSUMER: "1"
       MODEL_PATH: /checkpoints/model.txt
       SEED_DEMO: "1"
     volumes: ["./checkpoints:/checkpoints:ro"]

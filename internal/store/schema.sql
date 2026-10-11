@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS outbox (
     sent_at      TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS outbox_unsent_idx ON outbox (created_at) WHERE sent_at IS NULL;
+
+-- Consumer-side ledger: one row per event_id, however many times Kafka delivered it.
+CREATE TABLE IF NOT EXISTS ledger (
+    event_id       UUID PRIMARY KEY,
+    aggregate_id   UUID NOT NULL,
+    payload        JSONB NOT NULL,
+    deliveries     INT NOT NULL DEFAULT 1,
+    first_seen_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
