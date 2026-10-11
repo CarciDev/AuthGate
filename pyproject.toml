@@ -1,0 +1,21 @@
+[project]
+name = "authgate"
+version = "0.1.0"
+description = "Card transaction authorization service in Go with a transactional outbox (offline training + acceptance tests)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lightgbm==4.6.0",
+    "scikit-learn==1.7.2",
+    "numpy==2.3.4",
+    "pandas==2.3.3",
+    "datasets==4.2.0",
+    "pyarrow==21.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest==8.4.2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
